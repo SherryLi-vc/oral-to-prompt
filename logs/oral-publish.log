@@ -75,3 +75,127 @@ exec
  succeeded in 6505ms:
 https://github.com/SherryLi-vc/oral-to-prompt
 
+exec
+/bin/zsh -lc 'git init && git checkout -B main && git add -A && git status --short && git commit -m "Initial public release" && (git remote add origin https://github.com/SherryLi-vc/oral-to-prompt.git || git remote set-url origin https://github.com/SherryLi-vc/oral-to-prompt.git) && git push -u origin main' in /Users/vizhangkk/src/oral-to-prompt
+ exited 1 in 2433ms:
+Initialized empty Git repository in /Users/vizhangkk/src/oral-to-prompt/.git/
+Switched to a new branch 'main'
+A  .gitignore
+A  CHANGELOG.md
+A  CODEX_PUBLISH.md
+A  LICENSE
+A  README.md
+A  SKILL.md
+A  docs/examples/01-ready-gate.md
+A  docs/examples/02-gap-ask.md
+A  docs/examples/03-six-section.md
+A  docs/examples/04-crawler-six-only.md
+A  docs/examples/README.md
+A  docs/uat-summary.md
+A  logs/oral-publish.log
+A  logs/probe.log
+A  run-codex-publish.sh
+[main (root-commit) 55cb5a8] Initial public release
+ 15 files changed, 514 insertions(+)
+ create mode 100644 .gitignore
+ create mode 100644 CHANGELOG.md
+ create mode 100644 CODEX_PUBLISH.md
+ create mode 100644 LICENSE
+ create mode 100644 README.md
+ create mode 100644 SKILL.md
+ create mode 100644 docs/examples/01-ready-gate.md
+ create mode 100644 docs/examples/02-gap-ask.md
+ create mode 100644 docs/examples/03-six-section.md
+ create mode 100644 docs/examples/04-crawler-six-only.md
+ create mode 100644 docs/examples/README.md
+ create mode 100644 docs/uat-summary.md
+ create mode 100644 logs/oral-publish.log
+ create mode 100644 logs/probe.log
+ create mode 100755 run-codex-publish.sh
+To https://github.com/SherryLi-vc/oral-to-prompt.git
+ ! [rejected]        main -> main (fetch first)
+error: failed to push some refs to 'https://github.com/SherryLi-vc/oral-to-prompt.git'
+hint: Updates were rejected because the remote contains work that you do not
+hint: have locally. This is usually caused by another repository pushing to
+hint: the same ref. If you want to integrate the remote changes, use
+hint: 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+
+codex
+仓已创建，但首次 push 被 GitHub 自动生成的初始提交拒绝（远端有先行历史）。我会检查远端文件与提交；只有确认是空仓或初始文件后，才会保留远端历史并合并推送。
+exec
+/bin/zsh -lc 'git fetch origin && git log --oneline --decorate --all --graph -8 && git ls-tree -r --name-only origin/main && git show --stat --oneline origin/main' in /Users/vizhangkk/src/oral-to-prompt
+ succeeded in 2018ms:
+From https://github.com/SherryLi-vc/oral-to-prompt
+ * [new branch]      main       -> origin/main
+* 55cb5a8 (HEAD -> main) Initial public release
+* b07da8f (origin/main, origin/HEAD) Initial commit
+LICENSE
+b07da8f Initial commit
+ LICENSE | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
+
+exec
+/bin/zsh -lc 'git diff origin/main -- LICENSE; git show origin/main:LICENSE | head -5; head -5 LICENSE;' in /Users/vizhangkk/src/oral-to-prompt
+ succeeded in 0ms:
+MIT License
+
+Copyright (c) 2026 SherryLi-vc
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+MIT License
+
+Copyright (c) 2026 SherryLi-vc
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+
+exec
+/bin/zsh -lc 'git merge origin/main --allow-unrelated-histories --no-edit && git push -u origin main && gh repo view SherryLi-vc/oral-to-prompt --json url,isPrivate,defaultBranchRef && git rev-parse main' in /Users/vizhangkk/src/oral-to-prompt
+ succeeded in 3271ms:
+Merge made by the 'ort' strategy.
+To https://github.com/SherryLi-vc/oral-to-prompt.git
+   b07da8f..1031e1c  main -> main
+branch 'main' set up to track 'origin/main'.
+{"defaultBranchRef":{"name":"main"},"isPrivate":false,"url":"https://github.com/SherryLi-vc/oral-to-prompt"}
+1031e1c1b6afaaf0f85c4f07554dc134d578a201
+
+codex
+远端只有 GitHub 创建仓库时生成的单文件 `LICENSE`，且内容与本地一致；我保留了这段远端历史，通过合并提交后 push 成功。验证结果显示仓为公开且默认分支是 `main`，我现在记录结果和最终 tip SHA。
+exec
+/bin/zsh -lc "cat > RESULT.md <<'EOF'
+# 首发结果
+
+- URL: https://github.com/SherryLi-vc/oral-to-prompt
+- main tip commit SHA: "'`1031e1c1b6afaaf0f85c4f07554dc134d578a201`
+- Push 是否成功: 是（`main` 已推送并跟踪 `origin/main`）
+- 仓库权限: 公开（`isPrivate: false`）
+- 默认分支: `main`
+- 初始 push 错误原文: `! [rejected]        main -> main (fetch first)`；GitHub 自动生成的初始提交只含 `LICENSE`。保留远端历史并合并后推送成功。
+EOF
+git status --short --branch && gh repo view SherryLi-vc/oral-to-prompt --json url,isPrivate,defaultBranchRef && git rev-parse main' in /Users/vizhangkk/src/oral-to-prompt
+ succeeded in 1059ms:
+## main...origin/main
+ M logs/oral-publish.log
+?? RESULT.md
+{"defaultBranchRef":{"name":"main"},"isPrivate":false,"url":"https://github.com/SherryLi-vc/oral-to-prompt"}
+1031e1c1b6afaaf0f85c4f07554dc134d578a201
+
+codex
+首发完成：公开仓已推送，默认分支为 `main`。验证确认 `isPrivate: false`。
+
+- URL：https://github.com/SherryLi-vc/oral-to-prompt
+- `main` tip SHA：`1031e1c1b6afaaf0f85c4f07554dc134d578a201`
+- 首次 push 被远端自动生成的 `LICENSE` 提交拒绝；保留该历史、合并后推送成功。
+- 结果记录：[RESULT.md](/Users/vizhangkk/src/oral-to-prompt/RESULT.md)
+
+工作区里 `logs/oral-publish.log` 有未提交修改；`RESULT.md` 未推送。
+tokens used
+28,689
+首发完成：公开仓已推送，默认分支为 `main`。验证确认 `isPrivate: false`。
+
+- URL：https://github.com/SherryLi-vc/oral-to-prompt
+- `main` tip SHA：`1031e1c1b6afaaf0f85c4f07554dc134d578a201`
+- 首次 push 被远端自动生成的 `LICENSE` 提交拒绝；保留该历史、合并后推送成功。
+- 结果记录：[RESULT.md](/Users/vizhangkk/src/oral-to-prompt/RESULT.md)
+
+工作区里 `logs/oral-publish.log` 有未提交修改；`RESULT.md` 未推送。
