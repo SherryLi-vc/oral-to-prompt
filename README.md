@@ -1,4 +1,4 @@
-# prompt-optimizer（提示词优化）
+# oral-to-prompt（提示词优化）
 
 > ## 这不是什么（请先看）
 >
@@ -12,10 +12,9 @@ Grok Bot / Cursor skill。
 
 | 项 | 现行 |
 |---|---|
-| **公开 GitHub 仓名** | **`oral-to-prompt`**（用户已定；**勿用**撞车名 `prompt-optimizer`） |
-| 本地 skill id | `prompt-optimizer`（与仓名分离；用户另要求再改） |
-| 曾用 skill id | `secretary-prompt-rewrite` |
-| 已发布仓库 | [SherryLi-vc/oral-to-prompt](https://github.com/SherryLi-vc/oral-to-prompt)（公开；首发 `main` tip：`1031e1c`，详见 [RESULT.md](./RESULT.md)） |
+| **公开 GitHub 仓名** | **`oral-to-prompt`**（用户已定；**勿用**撞车名 `prompt-optimizer` 作仓名） |
+| 本地 skill id | **`oral-to-prompt`**（与仓名对齐；曾用 `prompt-optimizer` / `secretary-prompt-rewrite`） |
+| 已发布仓库 | [SherryLi-vc/oral-to-prompt](https://github.com/SherryLi-vc/oral-to-prompt)（公开；首发 tip：`1031e1c`，详见 [RESULT.md](./RESULT.md)；现行 `main` 随版本更新） |
 
 「私人秘书」仅为可选情景代入。见 [CHANGELOG](./CHANGELOG.md)。
 
@@ -32,7 +31,7 @@ Grok Bot / Cursor skill。
 
 ## 触发
 
-- **自动**：`description` 命中（口语命令要写成系统提示词 / 六段等）。
+- **自动（主路径）**：Grok Bot 靠 frontmatter `description` 与用户话匹配。用户自然提到「提示词」「系统提示词」「prompt」「优化 prompt / 优化提示词」「改写命令 / 改写口令」「把这段话写成提示词」「帮我写个 system prompt」等，即可加载本 skill，**不必先打口令**。
 - **口令（备选）**：`/提示词优化`、`/改写命令`。
 
 语言：跟随本轮输入（中→中，英→英）。
@@ -41,7 +40,7 @@ Grok Bot / Cursor skill。
 
 ```text
 workflows/
-  prompt-optimizer/
+  oral-to-prompt/
     SKILL.md
 ```
 

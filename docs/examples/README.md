@@ -9,4 +9,4 @@
 
 硬规则与反例见根目录 `SKILL.md`。本 skill **不是** Copilot/Sentry 的 eval 赛道。
 
-公开仓名已定 **`oral-to-prompt`**（**勿**用与 Copilot/Sentry 撞车的 `prompt-optimizer`；本地 skill id 仍为 `prompt-optimizer`）。
+公开仓名与本地 skill id 均为 **`oral-to-prompt`**（**勿**用与 Copilot/Sentry 撞车的仓名 `prompt-optimizer`；曾用 skill id `prompt-optimizer` / `secretary-prompt-rewrite`）。
