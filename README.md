@@ -4,9 +4,9 @@
 
 **English** · [简体中文](./README.zh-CN.md)
 
-> Turn a spoken command, a rough draft, or just a role name into a fixed six-section system prompt — rewritten, never executed.
+> Give it a simple prompt or just a role name: it researches what a senior, excellent practitioner in that role knows and does, then writes a complete six-section system prompt — rewritten, never executed.
 
-oral-to-prompt is an Agent Skills skill (a `SKILL.md` folder) for any agent that supports the format. It restructures what you said into six fixed sections (Role, Background, Objective, Requirements, Output Style, Constraints) that any assistant can take as its system prompt. When you name a role, it first researches what a senior, excellent practitioner in that role knows and does, and tags every point by evidence type. It is not a single chat-prompt rewriter and not an eval-driven prompt optimizer.
+oral-to-prompt is an Agent Skills skill (a `SKILL.md` folder) for any agent that supports the format. You give it a simple prompt, a rough draft, or just a role name. When a role is named, it first researches the knowledge, skills, traits, and boundaries of a senior, excellent practitioner in that role and tags every point by evidence type; then it writes six fixed sections (Role, Background, Objective, Requirements, Output Style, Constraints) that any assistant can take as its system prompt. Facts about your own task are never invented: missing ones are asked for. It is not a single chat-prompt rewriter and not an eval-driven prompt optimizer.
 
 - **Fixed six sections**: Two locked heading sets, Chinese or English, chosen by the input language; no sections added, removed, renamed, or mixed.
 - **Role research**: Naming a role triggers a search for the knowledge, skills, traits, and boundaries of a senior practitioner, each tagged 【来源】/【综合·多来源】/【推断】 (source / multi-source / inferred); no invented "senior standards".
@@ -63,7 +63,7 @@ python3 scripts/gate_final.py --mode final --draft-file scripts/fixtures/testdat
 - Not [awesome-copilot prompt-optimizer](https://github.com/github/awesome-copilot): that project turns a draft into a single pasteable user prompt.
 - Not [getsentry/skills prompt-optimizer](https://github.com/getsentry/skills): that project focuses on evals, multiple candidates, and cross-model prompt porting.
 - Not `socratic-coach` (developing the user's question) or `grill-me` (challenging a plan).
-- This skill turns spoken commands, drafts, or role names into a fixed six-section system prompt. Role names trigger research. Rewriting never means doing the requested task.
+- **What it is**: you give a simple prompt or just a role name; when a role is named, it first researches what a senior, excellent practitioner in that role knows and does (each point tagged 【来源】/【综合·多来源】/【推断】), then writes a complete fixed six-section system prompt. It only writes the prompt; it never does the task itself.
 
 ## Workflow
 
