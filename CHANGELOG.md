@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Removed internal files: `CODEX_PUBLISH.md`, `run-codex-publish.sh`, `logs/`, `RESULT.md`, `SKILL.v0.4.body.md`, `description.v0.4.txt`, and `docs/spec-v0.4-clarify-and-background.md`.
+- Updated `SKILL.md` with host-neutral wording, `license` and `compatibility` frontmatter, and a manual gate fallback; behavior otherwise unchanged.
+- Split documentation into English `README.md` and Chinese `README.zh-CN.md`, with verified cross-platform installation guidance.
+- Updated UAT summary with the v0.4 human test.
+
 ## [0.4.0] — 2026-10-30
 
 ### Added
@@ -30,24 +39,24 @@
 
 ### Notes
 
-- v0.3 U1–U8 只做了静态/模拟走查（U1 阶段 A 为真实检索）；未建测试 bot、未实机运行。U5（英文输入）已按用户拍板改为英文标题套，见 [UAT 摘要](./docs/uat-summary.md)。
+- v0.3 U1–U8 只做了静态/模拟走查（U1 阶段 A 为真实检索）；未实机运行。U5（英文输入）已按用户拍板改为英文标题套，见 [UAT 摘要](./docs/uat-summary.md)。
 
 ## [0.2.0] — 2026-10-30
 
 ### Renamed
 
 - Skill id：`prompt-optimizer` → **`oral-to-prompt`**（与公开仓名对齐）
-- Install 路径：`workflows/prompt-optimizer/` → `workflows/oral-to-prompt/`
+- 安装目录名称：`prompt-optimizer` → `oral-to-prompt`
 
 ### Changed
 
-- **description（自动加载）**：补充中英触发词（提示词 / 系统提示词 / prompt / 优化 prompt / 改写命令·口令 / system prompt 等）；写明 Grok Bot 路由靠 description 匹配，口令仅备选；与 `socratic-coach` / `grill-me` / `send-on-behalf` 的分流句保留。
+- **description（自动加载）**：补充中英触发词（提示词 / 系统提示词 / prompt / 优化 prompt / 改写命令·口令 / system prompt 等）；写明宿主 agent 路由靠 description 匹配，口令仅备选；与 `socratic-coach` / `grill-me` / `send-on-behalf` 的分流句保留。
 - **SKILL.md 正文**：分流图与展示段中的旧 id 改为 `oral-to-prompt`；适用场景补自然触发例句；不适用补「要直接执行命令而非改写成提示词」分流。六段标题、硬规则原意未改。
 - **README / docs**：现行 skill id、Install 路径、触发说明与仓名对齐。
 
 ### Notes
 
-- Codex 审读（REVIEW.md，未入库）：P1 文档过期文案与内部路径已在 [PR#1](https://github.com/SherryLi-vc/oral-to-prompt/pull/1) 清完；本版落实 id 对齐与 description 自动加载强化。无口令真人路由与真人压力测试仍待验证，不标为已通过。
+- 外部审读（REVIEW.md，未入库）：P1 文档过期文案与内部路径已在 [PR#1](https://github.com/SherryLi-vc/oral-to-prompt/pull/1) 清完；本版落实 id 对齐与 description 自动加载强化。无口令真人路由与真人压力测试仍待验证，不标为已通过。
 
 ## [0.1.0] — 2026-10-29
 
@@ -59,7 +68,7 @@
 
 ### Added
 
-- 发布至公开仓 [SherryLi-vc/oral-to-prompt](https://github.com/SherryLi-vc/oral-to-prompt)，首发 `main` tip 为 `1031e1c`（详见 [RESULT.md](./RESULT.md)）；包含 README（vs socratic / grill / send-on-behalf）、MIT、示例、触发说明和 UAT 摘要
+- 发布至公开仓 [SherryLi-vc/oral-to-prompt](https://github.com/SherryLi-vc/oral-to-prompt)，首发 `main` tip 为 `1031e1c`；包含 README（vs socratic / grill / send-on-behalf）、MIT、示例、触发说明和 UAT 摘要
 - 硬规则：不编造、不改原意、先确认准备、改写≠代做、禁假占位、不自动派下游
 
 ### Notes
