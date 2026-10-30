@@ -1,6 +1,6 @@
 # 示例：只给岗位名（阶段 A 角色调研 → 六段）
 
-> 模拟走查样例（2026-10-30）：用户一方为扮演；阶段 A 检索为真实 WebSearch（中英各一轮），非实机 bot 运行记录。
+> 模拟走查样例（2026-10-30）：用户一方为扮演；阶段 A 检索为真实网页检索（中英各一轮），非实机运行记录。
 
 ---
 
@@ -12,7 +12,7 @@
 
 > 已准备好，开始按「资深产品经理」调研，再整理成六段提示词。
 
-（执行动作：WebSearch「senior product manager competencies skills responsibilities job description」+「资深产品经理 岗位职责 任职要求 能力模型」）
+（执行动作：网页检索「senior product manager competencies skills responsibilities job description」+「资深产品经理 岗位职责 任职要求 能力模型」）
 
 ---
 
@@ -91,6 +91,6 @@
 ```
 
 未改原意，仅补结构；**本轮调研：开**（来源类型：真实招聘启事 2 份、英国政府 DDaT 能力框架、胜任力 JD 模板、国内招聘与能力模型文章；推断约 6%）。角色画像来自公开资料，非你的亲历事实。
-建议执行方：大总管或任一通用助手 bot。
+建议执行方：任一通用助手 agent。
 
 ---
