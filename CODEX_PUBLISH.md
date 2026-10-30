@@ -14,5 +14,5 @@
    - 私有/公开
    - 若有错误原文
 
-禁止：force-push、改 SKILL.md 的 name（保持 prompt-optimizer）、催用户、删远程历史。
+禁止：force-push、催用户、删远程历史。（历史备注：首发时曾要求保持 name=`prompt-optimizer`；0.2.0 起已对齐为 `oral-to-prompt`，本文件仅作发布审计，勿再当现行约束。）
 完成后退出。
