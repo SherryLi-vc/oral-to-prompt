@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.4.0] — 2026-10-30
+
+### Added
+
+- P1：模糊角色在调研前进行 1–3 个短问澄清；拒问时记录须索取项。
+- P2：任务背景限定为下游真实执行场景，禁止提示词交付过程等 meta 内容。
+- Python 硬门禁：`gate_clarify.py`、`gate_six_sections.py`、`gate_background_meta.py`、`gate_checklist.py` 与总入口 `gate_final.py`；附分叉建议、fixtures 和使用说明。
+- 更新 SKILL v0.4、纯正文及独立 description 文本。
+
+
 ## [0.3.0] — 2026-10-30
 
 ### Added
