@@ -1,78 +1,100 @@
-# oral-to-prompt（提示词优化）
+# oral-to-prompt
 
-> ## 这不是什么（请先看）
->
-> - **不是** [awesome-copilot `prompt-optimizer`](https://github.com/github/awesome-copilot) 那条「把草稿收成**单条可粘贴 user prompt**」赛道。  
-> - **不是** [getsentry/skills `prompt-optimizer`](https://github.com/getsentry/skills) 那条 **eval / 多候选 / 跨模型移植** 工程调优赛道。  
-> - **不是** `socratic-coach`（炼用户自己的高水平问题）。  
-> - **不是** `grill-me`（烤可动手方案）。  
-> - **本仓库**：把口语命令、草稿或**角色/岗位名**改成**固定六段 system / 助手提示词**；点名角色时先做**角色调研**（检索「资深且优秀的 xxx」，标【来源】/【推断】）；**改写 ≠ 代做**（例如「写个爬虫抓 HN」→ 只出六段，**不交爬虫代码**）。
+[![License: MIT](https://img.shields.io/github/license/SherryLi-vc/oral-to-prompt)](./LICENSE) [![Release](https://img.shields.io/github/v/release/SherryLi-vc/oral-to-prompt)](https://github.com/SherryLi-vc/oral-to-prompt/releases/latest)
 
-Grok Bot / Cursor skill。
+**English** · [简体中文](./README.zh-CN.md)
 
-| 项 | 现行 |
-|---|---|
-| **公开 GitHub 仓名** | **`oral-to-prompt`**（用户已定；**勿用**撞车名 `prompt-optimizer` 作仓名） |
-| 本地 skill id | **`oral-to-prompt`**（与仓名对齐；曾用 `prompt-optimizer` / `secretary-prompt-rewrite`） |
-| 已发布仓库 | [SherryLi-vc/oral-to-prompt](https://github.com/SherryLi-vc/oral-to-prompt)（公开；首发 tip：`1031e1c`，详见 [RESULT.md](./RESULT.md)；现行 `main` 随版本更新） |
+> Turn a spoken command, a rough draft, or just a role name into a fixed six-section system prompt — rewritten, never executed.
 
-「私人秘书」仅为可选情景代入。见 [CHANGELOG](./CHANGELOG.md)。
+oral-to-prompt is an Agent Skills skill (a `SKILL.md` folder) for any agent that supports the format. It restructures what you said into six fixed sections (Role, Background, Objective, Requirements, Output Style, Constraints) that any assistant can take as its system prompt. When you name a role, it first researches what a senior, excellent practitioner in that role knows and does, and tags every point by evidence type. It is not a single chat-prompt rewriter and not an eval-driven prompt optimizer.
 
-## 与 Copilot / Sentry / 苏格拉底 的差异
+- **Fixed six sections**: Two locked heading sets, Chinese or English, chosen by the input language; no sections added, removed, renamed, or mixed.
+- **Role research**: Naming a role triggers a search for the knowledge, skills, traits, and boundaries of a senior practitioner, each tagged 【来源】/【综合·多来源】/【推断】 (source / multi-source / inferred); no invented "senior standards".
+- **Clarify ambiguous roles first**: Roles with obvious forks (e.g. "English teacher") get 1–3 short questions before any research.
+- **Rewrite, never execute**: "Write a crawler for HN" yields a six-section prompt, not crawler code.
+- **Python hard gates**: `scripts/gate_final.py` checks clarification before research, and six-section structure, meta-free Background, and the checklist before delivery; Python 3 standard library only.
+- **Auto-trigger**: Loads when the frontmatter description matches; optional trigger phrases `/提示词优化` and `/改写命令`.
 
-| | **本 skill** | **Copilot prompt-optimizer** | **Sentry prompt-optimizer** | **socratic-coach** |
-|---|---|---|---|---|
-| 优化对象 | 口语命令 / 角色名 →（角色调研）→ **固定六段 system 提示词** | 草稿 → **单条 user prompt**（明确非 API system） | system/developer + **eval 回路** | 用户意图 → **高水平问题句** |
-| 输出 | 六段标题锁死的 Markdown 代码块 | 通常一个代码块 user prompt | Target / Success Criteria / Optimized Prompt 等整包 | 【梳理】‖ 问题句 |
-| 是否 eval 赛道 | **否**（不做 holdout、多候选、跨模型移植） | 否 | **是** | 否 |
-| 「写个爬虫」时 | **只交六段**；本会话不实现 | 改写成更好的 prompt，不执行 | 工程向改写 | 先问清 X，不写六段 |
+## Quick start / Install
 
-一句话：**苏格拉底炼「该问什么」；grill 烤「怎么做」；Copilot 类收成聊天 prompt；Sentry 类走 eval；本 skill 只产出固定六段 system 提示词，且绝不代跑任务。**
+The repository root is the skill folder. Clone or copy it into a skills directory and keep the folder name equal to the skill `name`; keep `scripts/` next to `SKILL.md` (cloning this repository does this). Python 3 is needed to run the gates.
 
-## 两阶段流程（v0.3）
+Shared user-level path read by Codex, Cursor, Gemini CLI and OpenCode:
 
-1. **阶段 A · 角色调研**（用户点名角色/岗位，且没给自洽的角色说明书时）：检索「资深且优秀的 xxx」的知识、能力、特质、职责边界、常见场景；每条标【来源】/【综合·多来源】/【推断】；**禁止无搜捏造**。默认自动归档，只有冲突或检索失败时才问用户。
-2. **阶段 B · 六段改写**（v0.2 原流程）：用户原意 + 调研 + 追问补齐 → 固定六段。用户原意优先于调研。
-
-跳过阶段 A：用户贴了职责 + 边界自洽的角色说明书；用户说「别搜」；纯任务改写、未点名角色；只润色已有六段。
-
-## 触发
-
-- **自动（主路径）**：Grok Bot 靠 frontmatter `description` 与用户话匹配。用户自然提到「提示词」「系统提示词」「prompt」「优化 prompt / 优化提示词」「改写命令 / 改写口令」「把这段话写成提示词」「帮我写个 system prompt」，或「写一段关于 xxx（角色/岗位）的提示词」「write a system prompt for a senior xxx」等，即可加载本 skill，**不必先打口令**。
-- **口令（备选）**：`/提示词优化`、`/改写命令`。
-
-语言：跟随本轮输入（中→中，英→英）。
-
-## Install
-
-```text
-workflows/
-  oral-to-prompt/
-    SKILL.md
+```bash
+git clone https://github.com/SherryLi-vc/oral-to-prompt.git ~/.agents/skills/oral-to-prompt
 ```
 
-## 六段模板（按语种选两套之一；套内标题固定，不可增减、不混用）
+Claude Code (also read by Cursor and OpenCode):
 
-中文输入用中文套，英文输入用英文套，顺序一一对应：
+```bash
+git clone https://github.com/SherryLi-vc/oral-to-prompt.git ~/.claude/skills/oral-to-prompt
+```
 
-| # | 中文套 | 英文套 |
-|---|---|---|
-| 1 | `# 角色定位` | `# Role` |
-| 2 | `# 任务背景` | `# Background` |
-| 3 | `# 总体目标` | `# Objective` |
-| 4 | `# 具体需求` | `# Requirements` |
-| 5 | `# 输出风格` | `# Output Style` |
-| 6 | `# 规则限制` | `# Constraints` |
+Gemini CLI alternative: `gemini skills install https://github.com/SherryLi-vc/oral-to-prompt.git`.
 
-## 仓库结构
+Project-level: put the folder under `.agents/skills/oral-to-prompt/` (or `.claude/skills/oral-to-prompt/`) in your repository. Other hosts that load `SKILL.md` folders can use a copy of the whole folder, including sibling files.
 
-| 路径 | 说明 |
+### How to invoke
+
+| Host | Invocation |
 |---|---|
-| [`SKILL.md`](./SKILL.md) | 可加载 skill 正文 |
-| [`docs/examples/`](./docs/examples/) | 含准备门禁、缺口追问、**爬虫只出六段**、**只给岗位名（角色调研）**、**英文标题套** |
-| [`docs/uat-summary.md`](./docs/uat-summary.md) | v0.2 U1–U6、v0.3 U1–U8 模拟走查、条件性判定及未验证项 |
-| [`CHANGELOG.md`](./CHANGELOG.md) | rename 与版本 |
-| [`LICENSE`](./LICENSE) | MIT |
+| All compatible hosts | Auto-load when the description matches |
+| Claude Code | `/oral-to-prompt` |
+| Codex | `$oral-to-prompt` |
+| Cursor | `/` menu |
+| Gemini CLI | Loads via its `activate_skill` flow |
+
+Chinese trigger phrases such as `/提示词优化` are phrases matched by the description; every host may not register them as slash commands.
+
+**Compatibility:** [Agent Skills specification](https://agentskills.io/specification); [Claude Code](https://code.claude.com/docs/en/skills); [OpenAI Codex](https://developers.openai.com/codex/skills); [Cursor](https://cursor.com/docs/context/skills); [Gemini CLI](https://geminicli.com/docs/cli/skills/); [OpenCode](https://opencode.ai/docs/skills/).
+
+### Run the gates
+
+From the skill folder:
+
+```bash
+python3 scripts/gate_final.py --mode pre-research --user-utterance "写一个关于英语老师的提示词" --clarify-state clarified --fork-label "AI英语私教"
+python3 scripts/gate_final.py --mode final --draft-file scripts/fixtures/testdata/v4_english_teacher_ok.md --clarify-state clarified --fork-label "AI英语私教" --lang zh
+```
+
+## What this is not
+
+- Not [awesome-copilot prompt-optimizer](https://github.com/github/awesome-copilot): that project turns a draft into a single pasteable user prompt.
+- Not [getsentry/skills prompt-optimizer](https://github.com/getsentry/skills): that project focuses on evals, multiple candidates, and cross-model prompt porting.
+- Not `socratic-coach` (developing the user's question) or `grill-me` (challenging a plan).
+- This skill turns spoken commands, drafts, or role names into a fixed six-section system prompt. Role names trigger research. Rewriting never means doing the requested task.
+
+## Workflow
+
+1. **Clarify** ambiguous roles with 1–3 short questions before research.
+2. **Phase A · Role research (optional):** for a named role without a self-contained role description, research the knowledge, skills, traits, boundaries, and common situations of an excellent senior practitioner. Tag evidence and do not invent standards.
+3. **Phase B · Six-section rewrite:** combine the user's intent, research, and any clarified details into the fixed template. The user's intent takes priority.
+4. **Gates:** run the bundled checks for clarification, six-section structure, Background meta content, and the final checklist before delivery.
+
+Skip Phase A when the user provides a self-contained role description, asks not to research, requests a plain task rewrite without naming a professional role, or only wants an existing six-section prompt polished.
+
+## Six-section headings
+
+| # | Chinese | English |
+|---|---|---|
+| 1 | 角色定位 | Role |
+| 2 | 任务背景 | Background |
+| 3 | 总体目标 | Objective |
+| 4 | 具体需求 | Requirements |
+| 5 | 输出风格 | Output Style |
+| 6 | 规则限制 | Constraints |
+
+## Repository structure
+
+| Path | Purpose |
+|---|---|
+| [`SKILL.md`](./SKILL.md) | Skill instructions |
+| [`scripts/`](./scripts/) | Gate scripts, fixtures, and usage notes |
+| [`docs/examples/`](./docs/examples/) | Worked examples |
+| [`docs/uat-summary.md`](./docs/uat-summary.md) | User acceptance test summary |
+| [`CHANGELOG.md`](./CHANGELOG.md) | Version history |
+| [`LICENSE`](./LICENSE) | MIT license |
 
 ## License
 
