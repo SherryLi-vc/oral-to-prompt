@@ -1,0 +1,532 @@
+OpenAI Codex v0.164.0
+--------
+workdir: /Users/vincy.zhang/src/oral-to-prompt
+model: gpt-6-luna
+provider: openai
+approval: never
+sandbox: danger-full-access
+reasoning effort: medium
+reasoning summaries: none
+session id: 01a18a37-05ac-7fa3-9876-37af5002c2e8
+--------
+user
+在 /Users/vincy.zhang/src/oral-to-prompt 对已发布 skill 做质量审读（只读为主）。
+背景：公开仓 https://github.com/SherryLi-vc/oral-to-prompt ，main tip 1031e1c；本目录当前 handoff@c62b033（相对 main 仅多 RESULT.md 与 logs）。skill id=prompt-optimizer；仓名 oral-to-prompt。socratic-coach 命名已拍板。
+必读：SKILL.md、README.md、CHANGELOG.md、docs/uat-summary.md。
+产出 REVIEW.md（中文）：优点；风险/缺口按 P0/P1/P2（含无口令自动加载、真人压力）；过期文案；最小修复清单（勿改六段标题与 skill name）；是否建议 RESULT 合 main。
+禁止：改业务规则除非硬错误；force-push；push 远端；删分支。完成后退出。
+codex
+我会先按仓库现状和指定文档做只读审读，再单独新增中文 `REVIEW.md`；不会改业务规则或执行任何远端/分支操作。我会采用代码审查流程来组织问题与修复优先级。
+exec
+/bin/zsh -lc "cat /Users/vincy.zhang/.codex/skills/code-review/SKILL.md && git status --short --branch && git rev-parse HEAD && git rev-parse main 2>/dev/null || true && rg --files -g 'SKILL.md' -g 'README.md' -g 'CHANGELOG.md' -g 'uat-summary.md' -g 'RESULT.md' -g 'AGENTS.md'" in /Users/vincy.zhang/src/oral-to-prompt
+ succeeded in 0ms:
+---
+name: code-review
+description: Review the changes since a fixed point (commit, branch, tag, or merge-base) along two axes — Standards (does the code follow this repo's documented coding standards?) and Spec (does the code match what the originating issue/spec asked for?). Runs both reviews in parallel sub-agents and reports them side by side. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to "review since X".
+---
+
+Two-axis review of the diff between `HEAD` and a fixed point the user supplies:
+
+- **Standards** — does the code conform to this repo's documented coding standards?
+- **Spec** — does the code faithfully implement the originating issue / spec?
+
+Both axes run as **parallel sub-agents** so they don't pollute each other's context, then this skill aggregates their findings.
+
+The issue tracker should have been provided to you — run `/setup-matt-pocock-skills` if `docs/agents/issue-tracker.md` is missing.
+
+## Process
+
+### 1. Pin the fixed point
+
+Whatever the user said is the fixed point — a commit SHA, branch name, tag, `main`, `HEAD~5`, etc. If they didn't specify one, ask for it.
+
+Capture the diff command once: `git diff <fixed-point>...HEAD` (three-dot, so the comparison is against the merge-base). Also note the list of commits via `git log <fixed-point>..HEAD --oneline`.
+
+Before going further, confirm the fixed point resolves (`git rev-parse <fixed-point>`) and the diff is non-empty. A bad ref or empty diff should fail here — not inside two parallel sub-agents.
+
+### 2. Identify the spec source
+
+Look for the originating spec, in this order:
+
+1. Issue references in the commit messages (`#123`, `Closes #45`, GitLab `!67`, etc.) — fetch via the workflow in `docs/agents/issue-tracker.md`.
+2. A path the user passed as an argument.
+3. A spec file under `docs/`, `specs/`, or `.scratch/` matching the branch name or feature.
+4. If nothing is found, ask the user where the spec is. If they say there isn't one, the **Spec** sub-agent will skip and report "no spec available".
+
+### 3. Identify the standards sources
+
+Anything in the repo that documents how code should be written, such as `CODING_STANDARDS.md` or `CONTRIBUTING.md`.
+
+On top of whatever the repo documents, the Standards axis always carries the **smell baseline** below — a fixed set of Fowler code smells (_Refactoring_, ch.3) that applies even when a repo documents nothing. Two rules bind it:
+
+- **The repo overrides.** A documented repo standard always wins; where it endorses something the baseline would flag, suppress the smell.
+- **Always a judgement call.** Each smell is a labelled heuristic ("possible Feature Envy"), never a hard violation — and, like any standard here, skip anything tooling already enforces.
+
+Each smell reads *what it is* → *how to fix*; match it against the diff:
+
+- **Mysterious Name** — a function, variable, or type whose name doesn't reveal what it does or holds. → rename it; if no honest name comes, the design's murky.
+- **Duplicated Code** — the same logic shape appears in more than one hunk or file in the change. → extract the shared shape, call it from both.
+- **Feature Envy** — a method that reaches into another object's data more than its own. → move the method onto the data it envies.
+- **Data Clumps** — the same few fields or params keep travelling together (a type wanting to be born). → bundle them into one type, pass that.
+- **Primitive Obsession** — a primitive or string standing in for a domain concept that deserves its own type. → give the concept its own small type.
+- **Repeated Switches** — the same `switch`/`if`-cascade on the same type recurs across the change. → replace with polymorphism, or one map both sites share.
+- **Shotgun Surgery** — one logical change forces scattered edits across many files in the diff. → gather what changes together into one module.
+- **Divergent Change** — one file or module is edited for several unrelated reasons. → split so each module changes for one reason.
+- **Speculative Generality** — abstraction, parameters, or hooks added for needs the spec doesn't have. → delete it; inline back until a real need shows.
+- **Message Chains** — long `a.b().c().d()` navigation the caller shouldn't depend on. → hide the walk behind one method on the first object.
+- **Middle Man** — a class or function that mostly just delegates onward. → cut it, call the real target direct.
+- **Refused Bequest** — a subclass or implementer that ignores or overrides most of what it inherits. → drop the inheritance, use composition.
+
+### 4. Spawn both sub-agents in parallel
+
+**Standards sub-agent prompt** — include:
+
+- The full diff command and commit list.
+- The list of standards-source files you found in step 3, **plus the smell baseline from step 3** pasted in full — the sub-agent has no other access to it.
+- The brief: "Report — per file/hunk where relevant — (a) every place the diff violates a documented standard: cite the standard (file + the rule); and (b) any baseline smell you spot: name it and quote the hunk. Distinguish hard violations from judgement calls — documented-standard breaches can be hard, but baseline smells are always judgement calls, and a documented repo standard overrides the baseline. Skip anything tooling enforces. Under 400 words."
+
+**Spec sub-agent prompt** — include:
+
+- The diff command and commit list.
+- The path or fetched contents of the spec.
+- The brief: "Report: (a) requirements the spec asked for that are missing or partial; (b) behaviour in the diff that wasn't asked for (scope creep); (c) requirements that look implemented but where the implementation looks wrong. Quote the spec line for each finding. Under 400 words."
+
+If the spec is missing, skip the Spec sub-agent and note this in the final report.
+
+### 5. Aggregate
+
+Present the two reports under `## Standards` and `## Spec` headings, verbatim or lightly cleaned. Do **not** merge or rerank findings — the two axes are deliberately separate (see _Why two axes_).
+
+End with a one-line summary: total findings per axis, and the worst issue _within each axis_ (if any). Don't pick a single winner across axes — that's the reranking the separation exists to prevent.
+
+## Why two axes
+
+A change can pass one axis and fail the other:
+
+- Code that follows every standard but implements the wrong thing → **Standards pass, Spec fail.**
+- Code that does exactly what the issue asked but breaks the project's conventions → **Spec pass, Standards fail.**
+
+Reporting them separately stops one axis from masking the other.
+## handoff/20261030-MacBookPro...origin/handoff/20261030-MacBookPro
+?? CODEX_REVIEW.md
+?? logs/review.log
+c62b0333986959dce87c6834a68ab7a7288d2960
+main
+SKILL.md
+README.md
+docs/examples/README.md
+docs/uat-summary.md
+CHANGELOG.md
+RESULT.md
+
+exec
+/bin/zsh -lc 'git remote -v; git show-ref --heads --tags; git log --oneline --decorate -8; git diff --stat 1031e1c...HEAD 2>&1; cat SKILL.md README.md CHANGELOG.md docs/uat-summary.md RESULT.md' in /Users/vincy.zhang/src/oral-to-prompt
+ succeeded in 0ms:
+origin	https://github.com/SherryLi-vc/oral-to-prompt.git (fetch)
+origin	https://github.com/SherryLi-vc/oral-to-prompt.git (push)
+c62b0333986959dce87c6834a68ab7a7288d2960 refs/heads/handoff/20261030-MacBookPro
+c62b033 (HEAD -> handoff/20261030-MacBookPro, origin/handoff/20261030-MacBookPro) handoff: MacBook Pro to Mac Mini 2026-10-30 07:48 Asia/Shanghai
+1031e1c (origin/main, origin/HEAD) Merge remote-tracking branch 'origin/main'
+55cb5a8 Initial public release
+b07da8f Initial commit
+ RESULT.md             |   8 ++++
+ logs/oral-publish.log | 124 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 132 insertions(+)
+---
+name: prompt-optimizer
+description: >-
+  用户要把口语命令或草稿改写成固定六段式系统提示词时使用（通用提示词优化；「私人秘书」只是可选情景代入）。先确认准备就绪再收材料；不编造、不改原意、不执行命令本身；中英跟随。不同于苏格拉底（问清自己的问题）、grill-me（烤方案）、send-on-behalf（外发消息）。可由
+  /提示词优化 或 /改写命令 触发。
+---
+# 提示词优化
+
+展示名：提示词优化。边界一句话：**把用户的口语命令或草稿，改写成固定六段系统提示词，交给任意助手 / system 槽执行；不执行命令本身，不帮用户挖自己的 X，不代发消息，不替用户烤设计方案。**
+
+「私人秘书」只是一种常见情景代入，不是本 skill 的唯一受众；也可改写成给 Coding、Search、通用 Agent 等用的系统提示词。
+
+语言：跟随本轮输入（中文命令→中文六段；英文→英文）。
+
+**触发（明确）：允许 description 命中后自动触发；口令仅备选，不必强制。** 备选口令：`/提示词优化`、`/改写命令`。
+
+---
+
+## 适用 / 不适用
+
+**适用**
+- 基础命令要写成可粘贴的 system / 助手提示词
+- 需要固定六段，便于执行
+- 口语、略缺层，但原意可把握；缺口可追问
+- 情景代入可以是秘书、专项 bot、或其他执行角色（由用户指定或默认通用助手）
+
+**不适用**
+- 挖自己的 X / 想法乱 / XY → `socratic-coach`
+- 烤设计 → `grill-me` / `grill-with-docs`
+- 外发邮件/IM → `send-on-behalf`
+- 按失败日志 / eval 工程调优 → 另开任务（本 skill 不做）
+- 「有没有现成 skill」→ find-skills（本会话内不安装第三方优化器）
+- 一句闲聊润色、不需要六段结构 → 不必强行六段
+
+---
+
+## 硬规则（不可弱化）
+
+1. **不编造**：缺关键信息先追问用户；终稿禁止 `[收件人]`、`{主题}` 等假占位。
+2. **不改原意**：只结构化与显式化，不擅自扩 scope（如「整理发票」不得加「报销审批」）。
+3. **语言跟随**：与输入语种一致；不要中英混杂终稿。
+4. **先确认准备**：触发后先说已准备好并请发基础命令；未收到材料前不出终稿。
+5. **改写≠代做**：输出永远是提示词。即使用户命令是「写个爬虫 / 写代码」，本会话也**只交六段**，不交实现、不跑命令。
+6. **禁止假占位**：信息不够就追问；用户拒绝补充时，才在「规则限制」写明「执行者须向用户索取：…」，仍不可 silently 填假。
+7. **不自动派下游**：不把六段自动发给其他 bot、不冒充用户下令；可附一行「建议执行方」；需要交接时可提示 `handoff`，默认不写 handoff 文件、不自动 SendToAgent。
+
+---
+
+## 与苏格拉底等分流
+
+```text
+想法乱 / XY / 「推荐个工具」但目的不清
+    → 建议先 socratic-coach；用户坚持则按字面改写并写勿扩 scope
+口语/草稿要写成固定六段系统提示词
+    → 本 skill（prompt-optimizer）
+要拍板产品/架构
+    → grill-me（± grill-with-docs）；本 skill 不代烤、不用 ➡️ 选项填「具体需求」
+要发出去的邮件/Slack
+    → send-on-behalf
+六段写好后要换 bot 续跑
+    → 用户或大总管决定；可 handoff 一行提示；本 skill 默认不代发
+```
+
+目的明显不清时：先建议走苏格拉底。用户坚持「就按这句话改」→ 按字面写六段，并在「规则限制」写明勿扩 scope、缺信息须向用户索取。
+
+---
+
+## 交互流程
+
+1. **准备门禁**：说已理解并准备好，请发基础版命令（口语即可）。
+2. **收材料**：通读，把握原意；区分「本轮事实」与「稳定角色/规则」。
+3. **缺口判断**：能否不编造地填满六段？
+   - 否 → 短追问 1–3 点，再等材料（默认先问本用户）。
+   - 用户拒绝补充 → 在「规则限制」列出执行者须向用户索取的项，仍禁止假占位。
+   - 是 → 进入改写。
+4. **改写**：严格按下方唯一六段；列表 + 加粗要点 + 空白分隔。
+5. **自检**：无假占位、不改意、语种一致、未代做任务、标题六段齐全且顺序固定。
+6. **交付**：
+   - 终稿六段包在一个 markdown 代码块里；
+   - 默认附一行：「未改原意，仅补结构」类说明；详细 diff 仅当用户问；
+   - 可选一行「建议执行方：大总管 / 某 bot」。
+7. **修订**：用户要改 → 回到收材料；否则结束。不自动派下游。
+
+---
+
+## 六段模板（唯一；标题不可改、不可增减）
+
+```markdown
+# 角色定位
+# 任务背景
+# 总体目标
+# 具体需求
+# 输出风格
+# 规则限制
+```
+
+分层提示：
+- **角色定位 / 规则限制**：稳定策略（执行者是谁、必须遵守什么；秘书只是可选代入）。
+- **任务背景 / 总体目标 / 具体需求**：本轮事实与要做什么。
+- **输出风格**：格式、语气、长度。
+- **规则限制**必须含：诚实不编造；逻辑递进；以及固定收尾句——中文用「回答前先核对：是否覆盖具体需求且未编造。」；英文用「Think carefully before answering: cover the specific requirements without inventing facts.」
+
+有具体内容（收件人、路径、日期等）→ 写入「具体需求」。只有任务类描述 → 写清执行者应如何向用户要输入（优先已在追问环节补齐）。
+
+---
+
+## 自检清单（交付前）
+
+- [ ] 已先说准备好并收到基础命令
+- [ ] 六段标题齐全、顺序固定、无第七段
+- [ ] 无假占位；缺口已追问或已写入「执行者须索取」
+- [ ] 未改原意、未扩 scope
+- [ ] 语种与输入一致
+- [ ] 本会话未交实现代码 / 未执行命令内容
+- [ ] 未自动派下游；最多一行建议执行方
+
+---
+
+## 反例（禁止）
+
+- 触发后直接编造任务并输出六段
+- 「发个邮件」→ 编造收件人与正文
+- 「写个爬虫抓 HN」作为要优化的命令 → 本 bot 直接交爬虫代码
+- 「帮我问清楚我到底要什么」→ 强行套六段而不建议苏格拉底
+- 六段写完后擅自 SendToAgent / 代发
+# prompt-optimizer（提示词优化）
+
+> ## 这不是什么（请先看）
+>
+> - **不是** [awesome-copilot `prompt-optimizer`](https://github.com/github/awesome-copilot) 那条「把草稿收成**单条可粘贴 user prompt**」赛道。  
+> - **不是** [getsentry/skills `prompt-optimizer`](https://github.com/getsentry/skills) 那条 **eval / 多候选 / 跨模型移植** 工程调优赛道。  
+> - **不是** `socratic-coach`（炼用户自己的高水平问题）。  
+> - **不是** `grill-me`（烤可动手方案）。  
+> - **本仓库**：把口语命令改成**固定六段 system / 助手提示词**；**改写 ≠ 代做**（例如「写个爬虫抓 HN」→ 只出六段，**不交爬虫代码**）。
+
+Grok Bot / Cursor skill。
+
+| 项 | 现行 |
+|---|---|
+| **公开 GitHub 仓名** | **`oral-to-prompt`**（用户已定；**勿用**撞车名 `prompt-optimizer`） |
+| 本地 skill id | `prompt-optimizer`（与仓名分离；用户另要求再改） |
+| 曾用 skill id | `secretary-prompt-rewrite` |
+| 拟远程 | `SherryLi-vc/oral-to-prompt`（等空仓 URL 后 push） |
+
+「私人秘书」仅为可选情景代入。见 [CHANGELOG](./CHANGELOG.md)。
+
+## 与 Copilot / Sentry / 苏格拉底 的差异
+
+| | **本 skill** | **Copilot prompt-optimizer** | **Sentry prompt-optimizer** | **socratic-coach** |
+|---|---|---|---|---|
+| 优化对象 | 口语命令 → **固定六段 system 提示词** | 草稿 → **单条 user prompt**（明确非 API system） | system/developer + **eval 回路** | 用户意图 → **高水平问题句** |
+| 输出 | 六段标题锁死的 Markdown 代码块 | 通常一个代码块 user prompt | Target / Success Criteria / Optimized Prompt 等整包 | 【梳理】‖ 问题句 |
+| 是否 eval 赛道 | **否**（不做 holdout、多候选、跨模型移植） | 否 | **是** | 否 |
+| 「写个爬虫」时 | **只交六段**；本会话不实现 | 改写成更好的 prompt，不执行 | 工程向改写 | 先问清 X，不写六段 |
+
+一句话：**苏格拉底炼「该问什么」；grill 烤「怎么做」；Copilot 类收成聊天 prompt；Sentry 类走 eval；本 skill 只产出固定六段 system 提示词，且绝不代跑任务。**
+
+## 触发
+
+- **自动**：`description` 命中（口语命令要写成系统提示词 / 六段等）。
+- **口令（备选）**：`/提示词优化`、`/改写命令`。
+
+语言：跟随本轮输入（中→中，英→英）。
+
+## Install
+
+```text
+workflows/
+  prompt-optimizer/
+    SKILL.md
+```
+
+## 六段模板（标题固定，不可增减）
+
+```markdown
+# 角色定位
+# 任务背景
+# 总体目标
+# 具体需求
+# 输出风格
+# 规则限制
+```
+
+## 仓库结构
+
+| 路径 | 说明 |
+|---|---|
+| [`SKILL.md`](./SKILL.md) | 可加载 skill 正文 |
+| [`docs/examples/`](./docs/examples/) | 含准备门禁、缺口追问、**爬虫只出六段** |
+| [`docs/uat-summary.md`](./docs/uat-summary.md) | UAT 摘要占位 |
+| [`CHANGELOG.md`](./CHANGELOG.md) | rename 与版本 |
+| [`LICENSE`](./LICENSE) | MIT |
+
+## License
+
+MIT © 2026 SherryLi-vc
+# Changelog
+
+## [0.1.0] — 2026-10-29
+
+### Renamed
+
+- Skill id：`secretary-prompt-rewrite` → **`prompt-optimizer`**
+- 生产路径：`/home/box/agent-data/workflows/prompt-optimizer/SKILL.md`
+- 语义：通用提示词优化；「私人秘书」仅为可选情景代入
+
+### Added
+
+- 公开仓最小骨架：README（vs socratic / grill / send-on-behalf）、MIT、示例、触发说明、UAT 摘要占位
+- 硬规则：不编造、不改原意、先确认准备、改写≠代做、禁假占位、不自动派下游
+
+### Notes
+
+- 内部 UAT（旧 id）：U1–U6 Go。完整报告归档 `/workspace/prompt-optimizer/`（见 `INDEX.md`）。
+
+### Docs
+
+- README 大字声明：非 Copilot user-prompt 赛道、非 Sentry eval 赛道、非苏格拉底
+- 示例增加「爬虫只出六段」
+
+### Naming（公开仓）
+
+- Search 撞车：**勿**用公开仓名 `prompt-optimizer`
+- **用户已定公开仓名：`oral-to-prompt`**（拟 `SherryLi-vc/oral-to-prompt`）
+- 本地 skill id 仍为 `prompt-optimizer`（与仓名分离）
+- 等空仓 URL 后 push
+# UAT 摘要
+
+> SKILL **未改**。公开仓名已定 **`oral-to-prompt`**（**勿**用撞车名 `prompt-optimizer`）。完整报告在 `/workspace/prompt-optimizer/`。
+
+| 项 | 内容 |
+|---|---|
+| Skill id（现行） | `prompt-optimizer`（曾用 `secretary-prompt-rewrite`） |
+| 生产路径 | `/home/box/agent-data/workflows/prompt-optimizer/SKILL.md` |
+| P0 判定 | **有条件 Go**（非 Blocker） |
+| SKILL 是否改动 | **否** |
+
+## 报告索引
+
+| 报告 | 结果 | 路径 |
+|---|---|---|
+| rename 后 P0 回归 | **U1–U6 · 6/6 Pass**；静态 Pass | [`uat-prompt-optimizer-post-rename.md`](/workspace/prompt-optimizer/uat-prompt-optimizer-post-rename.md) |
+| 开源行为对打 | vs awesome-copilot / prompt-enhancer；壁垒=固定六段+准备门禁+先问用户+苏格拉底分流；**同名须 README 写清** | [`opensource-behavior-bench.md`](/workspace/prompt-optimizer/opensource-behavior-bench.md) |
+| 跨 bot U5（爬虫） | 大总管 / Coding / Search **3/3 Pass**（只交六段、无实现） | [`uat-prompt-optimizer-agents-u5.md`](/workspace/prompt-optimizer/uat-prompt-optimizer-agents-u5.md) |
+
+公开 README 已要求写清 vs Copilot 同名差异（六段 system ≠ 单条 chat prompt；**非** Sentry eval 赛道）。见根目录 [README.md](../README.md)。
+
+## 条件备注（非 No-Go）
+
+- U4：六段**标题固定中文**；英文输入 → 段内英文、标题中文（与旧 UAT 相同）。
+- 口令落地：`/提示词优化`、`/改写命令`。
+
+## 未验证
+
+- **无口令**时 description 自动加载（路由层）
+- **真人**压力测试（本轮均为角色扮演 / 指令触发）
+
+## 待补（发布后）
+
+- [ ] 空仓 `SherryLi-vc/oral-to-prompt` URL 到手后 push（文案已改齐）
+- [ ] （可选）无口令自动加载抽测、真人短测
+# 首发结果
+
+- URL: https://github.com/SherryLi-vc/oral-to-prompt
+- main tip commit SHA: `1031e1c1b6afaaf0f85c4f07554dc134d578a201`
+- Push 是否成功: 是（`main` 已推送并跟踪 `origin/main`）
+- 仓库权限: 公开（`isPrivate: false`）
+- 默认分支: `main`
+- 初始 push 错误原文: `! [rejected]        main -> main (fetch first)`；GitHub 自动生成的初始提交只含 `LICENSE`。保留远端历史并合并后推送成功。
+
+exec
+/bin/zsh -lc "rg -n -i '待|占位|等空仓|拟远程|secretary-prompt-rewrite|socratic|未验证|自动|真人|压力|/workspace|/home/box|push|public' SKILL.md README.md CHANGELOG.md docs/uat-summary.md docs/examples RESULT.md" in /Users/vincy.zhang/src/oral-to-prompt
+ succeeded in 0ms:
+README.md:7:> - **不是** `socratic-coach`（炼用户自己的高水平问题）。  
+README.md:17:| 曾用 skill id | `secretary-prompt-rewrite` |
+README.md:18:| 拟远程 | `SherryLi-vc/oral-to-prompt`（等空仓 URL 后 push） |
+README.md:24:| | **本 skill** | **Copilot prompt-optimizer** | **Sentry prompt-optimizer** | **socratic-coach** |
+README.md:35:- **自动**：`description` 命中（口语命令要写成系统提示词 / 六段等）。
+README.md:65:| [`docs/uat-summary.md`](./docs/uat-summary.md) | UAT 摘要占位 |
+SKILL.md:15:**触发（明确）：允许 description 命中后自动触发；口令仅备选，不必强制。** 备选口令：`/提示词优化`、`/改写命令`。
+SKILL.md:28:- 挖自己的 X / 想法乱 / XY → `socratic-coach`
+SKILL.md:39:1. **不编造**：缺关键信息先追问用户；终稿禁止 `[收件人]`、`{主题}` 等假占位。
+SKILL.md:44:6. **禁止假占位**：信息不够就追问；用户拒绝补充时，才在「规则限制」写明「执行者须向用户索取：…」，仍不可 silently 填假。
+SKILL.md:45:7. **不自动派下游**：不把六段自动发给其他 bot、不冒充用户下令；可附一行「建议执行方」；需要交接时可提示 `handoff`，默认不写 handoff 文件、不自动 SendToAgent。
+SKILL.md:53:    → 建议先 socratic-coach；用户坚持则按字面改写并写勿扩 scope
+SKILL.md:74:   - 用户拒绝补充 → 在「规则限制」列出执行者须向用户索取的项，仍禁止假占位。
+SKILL.md:77:5. **自检**：无假占位、不改意、语种一致、未代做任务、标题六段齐全且顺序固定。
+SKILL.md:82:7. **修订**：用户要改 → 回到收材料；否则结束。不自动派下游。
+SKILL.md:111:- [ ] 无假占位；缺口已追问或已写入「执行者须索取」
+SKILL.md:115:- [ ] 未自动派下游；最多一行建议执行方
+docs/examples/04-crawler-six-only.md:31:- 勿把「写爬虫」扩成数据分析报告或自动发帖
+RESULT.md:5:- Push 是否成功: 是（`main` 已推送并跟踪 `origin/main`）
+RESULT.md:8:- 初始 push 错误原文: `! [rejected]        main -> main (fetch first)`；GitHub 自动生成的初始提交只含 `LICENSE`。保留远端历史并合并后推送成功。
+docs/examples/README.md:6:| [02-gap-ask.md](./02-gap-ask.md) | 缺口追问、禁假占位 |
+CHANGELOG.md:7:- Skill id：`secretary-prompt-rewrite` → **`prompt-optimizer`**
+CHANGELOG.md:8:- 生产路径：`/home/box/agent-data/workflows/prompt-optimizer/SKILL.md`
+CHANGELOG.md:13:- 公开仓最小骨架：README（vs socratic / grill / send-on-behalf）、MIT、示例、触发说明、UAT 摘要占位
+CHANGELOG.md:14:- 硬规则：不编造、不改原意、先确认准备、改写≠代做、禁假占位、不自动派下游
+CHANGELOG.md:18:- 内部 UAT（旧 id）：U1–U6 Go。完整报告归档 `/workspace/prompt-optimizer/`（见 `INDEX.md`）。
+CHANGELOG.md:30:- 等空仓 URL 后 push
+docs/uat-summary.md:3:> SKILL **未改**。公开仓名已定 **`oral-to-prompt`**（**勿**用撞车名 `prompt-optimizer`）。完整报告在 `/workspace/prompt-optimizer/`。
+docs/uat-summary.md:7:| Skill id（现行） | `prompt-optimizer`（曾用 `secretary-prompt-rewrite`） |
+docs/uat-summary.md:8:| 生产路径 | `/home/box/agent-data/workflows/prompt-optimizer/SKILL.md` |
+docs/uat-summary.md:16:| rename 后 P0 回归 | **U1–U6 · 6/6 Pass**；静态 Pass | [`uat-prompt-optimizer-post-rename.md`](/workspace/prompt-optimizer/uat-prompt-optimizer-post-rename.md) |
+docs/uat-summary.md:17:| 开源行为对打 | vs awesome-copilot / prompt-enhancer；壁垒=固定六段+准备门禁+先问用户+苏格拉底分流；**同名须 README 写清** | [`opensource-behavior-bench.md`](/workspace/prompt-optimizer/opensource-behavior-bench.md) |
+docs/uat-summary.md:18:| 跨 bot U5（爬虫） | 大总管 / Coding / Search **3/3 Pass**（只交六段、无实现） | [`uat-prompt-optimizer-agents-u5.md`](/workspace/prompt-optimizer/uat-prompt-optimizer-agents-u5.md) |
+docs/uat-summary.md:27:## 未验证
+docs/uat-summary.md:29:- **无口令**时 description 自动加载（路由层）
+docs/uat-summary.md:30:- **真人**压力测试（本轮均为角色扮演 / 指令触发）
+docs/uat-summary.md:32:## 待补（发布后）
+docs/uat-summary.md:34:- [ ] 空仓 `SherryLi-vc/oral-to-prompt` URL 到手后 push（文案已改齐）
+docs/uat-summary.md:35:- [ ] （可选）无口令自动加载抽测、真人短测
+
+codex
+文档里确认有两类实际缺口：自动加载和真人压力测试都明确未验证；另外 README 与 UAT 摘要仍把已发布仓库写成“待空仓后 push”，属于过期发布文案。我正在把审读结论写入新文件，并保留现有未跟踪文件不动。
+apply patch
+patch: completed
+/Users/vincy.zhang/src/oral-to-prompt/REVIEW.md
+diff --git a/REVIEW.md b/REVIEW.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..78beb5e1bb27b3d7c95dc7bd2943079567457ed3
+--- /dev/null
++++ b/REVIEW.md
+@@ -0,0 +1,53 @@
++# 已发布 Skill 质量审读
++
++审读对象：`prompt-optimizer`（仓库 `oral-to-prompt`）  
++基线：公开 `main` tip `1031e1c`；本地 handoff `c62b033`。本地相对 main 仅增加 `RESULT.md` 与 `logs/`。  
++范围：`SKILL.md`、`README.md`、`CHANGELOG.md`、`docs/uat-summary.md`，并核对发布结果记录。此审读以只读检查为主；本文件为唯一新增产物。
++
++## 优点
++
++- Skill 的工作边界具体：将口语命令整理成固定六段系统提示词，并反复强调不执行命令本身、不编造、不扩展原意。
++- 缺信息时先追问、用户拒答时把索取责任留给执行者，避免用占位符伪装完整输入。
++- 准备门禁、语言跟随、交付自检和不自动派发下游构成了清楚的交互流程。
++- 分流说明覆盖 `socratic-coach`、`grill-me` 与 `send-on-behalf`；skill id 与仓名的区别也有写明。
++- UAT 摘要记录了 U1–U6 与跨 bot U5 的结果，同时坦白列出尚未验证的路由和真人场景，没有把模拟结果冒充真实使用证据。
++
++## 风险与缺口
++
++### P0
++
++- 未发现依据现有材料可确认的 P0 硬错误。静态文档审读无法证明实际运行路由或行为正确。
++
++### P1
++
++- **无口令自动加载没有验证。** `SKILL.md` 明确允许仅由 description 命中自动触发，README 也称其为自动触发；但 UAT 把路由层自动加载列为“未验证”。这是核心入口假设，当前发布材料不能证明用户不输入口令也能稳定调用此 skill。
++- **真人压力测试缺失。** UAT 明确说明现有测试均为角色扮演或指令触发。准备门禁、连续补充信息、拒绝回答及坚持按字面改写等行为，在真实用户压力下尚无证据；目前的 6/6 不能覆盖这一点。
++- **公开文案与发布状态矛盾。** README 的“拟远程”仍写“等空仓 URL 后 push”，CHANGELOG 仍写“等空仓 URL 后 push”，UAT 的待补项也仍要求空仓后 push；但仓库已经公开，且 `RESULT.md` 记载 push 成功及 `main` SHA。读者会误以为尚未发布或发布目标未确定。
++
++### P2
++
++- README 将 `docs/uat-summary.md` 描述为“UAT 摘要占位”，但该文件已有 UAT 结果和未验证项，标签已不准确。
++- `CHANGELOG.md` 的新增项仍称仓库为“公开仓最小骨架”，且把内部旧 id 的 UAT 结果写成笼统的 “Go”；公开读者难以区分已验证范围与条件性结论。可改为指向 UAT 摘要，不需改测试结论。
++- `CHANGELOG.md` 与 UAT 摘要含 `/home/box/...`、`/workspace/...` 等内部绝对路径；公开仓读者无法访问，降低报告链接的可用性。建议换成仓内相对链接，或明确标为内部归档位置。
++- UAT 的“P0 判定：有条件 Go（非 Blocker）”容易被理解为整体生产就绪，尽管路由和真人测试仍未验证。建议明确该判断仅适用于已执行的静态检查和模拟用例。
++
++## 过期文案定位
++
++- `README.md`：仓库信息表中的“拟远程”“等空仓 URL 后 push”；结构表中的“UAT 摘要占位”。
++- `CHANGELOG.md`：Added 中的“公开仓最小骨架”和 Naming 中的“等空仓 URL 后 push”。
++- `docs/uat-summary.md`：“待补（发布后）”下“空仓 URL 到手后 push”，与当前 `RESULT.md` 记录冲突。
++- 内部绝对路径出现于 `CHANGELOG.md`、`docs/uat-summary.md`，作为公开文档链接不可用。
++
++## 最小修复清单
++
++1. 将 README、CHANGELOG、UAT 中“等空仓后 push / 拟远程”改成已发布状态，并用 `RESULT.md` 中的仓库 URL 与 `1031e1c` SHA 对齐。
++2. README 把“UAT 摘要占位”改成准确说明；UAT 将 P0 有条件 Go 的适用范围写清楚。
++3. 处理公开文档中的内部绝对路径：换仓内相对链接；若报告不在仓库，则明确标注为内部归档、不可公开访问。
++4. 后续补两项验证并记录环境和结果：不带口令时的 description 自动加载，以及真人短测/压力场景。验证完成前，不把二者表述为已通过。
++5. CHANGELOG 将“最小骨架”改为已发布版本的描述，并把 UAT 结果链接到仓内摘要。
++
++以上不要求改动六段标题、顺序或 skill name，也不要求改变业务规则。`socratic-coach` 名称按已拍板决定保留。
++
++## 是否建议 RESULT 合 main
++
++**建议合入 `RESULT.md`。** 它补充了公开仓 URL、实际 `main` tip、公开权限、默认分支和 push 结果，是可审计的发布凭据；内容未显示需要隐藏的凭证。合入时保持记录原样，并用其修正上述过期文案。此建议不包含 `logs/`。
+
+exec
+/bin/zsh -lc 'git status --short && git diff -- REVIEW.md' in /Users/vincy.zhang/src/oral-to-prompt
+ succeeded in 0ms:
+?? CODEX_REVIEW.md
+?? REVIEW.md
+?? logs/review.log
+
+codex
+已完成审读并新增 [REVIEW.md](/Users/vincy.zhang/src/oral-to-prompt/REVIEW.md)。
+
+审读结论：未发现可确认的 P0；P1 包括无口令自动加载和真人压力测试未验证，以及公开文案仍称仓库尚未 push。建议将 `RESULT.md` 合入 main，作为发布记录；建议不包含 `logs/`。六段标题、skill name 和业务规则均无需改动。
+
+工作区中原有的 `CODEX_REVIEW.md` 与 `logs/review.log` 保持未改动。
+tokens used
+20,496
+已完成审读并新增 [REVIEW.md](/Users/vincy.zhang/src/oral-to-prompt/REVIEW.md)。
+
+审读结论：未发现可确认的 P0；P1 包括无口令自动加载和真人压力测试未验证，以及公开文案仍称仓库尚未 push。建议将 `RESULT.md` 合入 main，作为发布记录；建议不包含 `logs/`。六段标题、skill name 和业务规则均无需改动。
+
+工作区中原有的 `CODEX_REVIEW.md` 与 `logs/review.log` 保持未改动。
