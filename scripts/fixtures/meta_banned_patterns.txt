@@ -1,0 +1,8 @@
+希望得到.*提示词
+改写成六段
+系统提示词交付
+用户希望得到一份
+oral-to-prompt
+测试本 skill
+把口语改成
+system prompt 交付
