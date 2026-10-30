@@ -51,23 +51,25 @@ workflows/
     SKILL.md
 ```
 
-## 六段模板（标题固定，不可增减）
+## 六段模板（按语种选两套之一；套内标题固定，不可增减、不混用）
 
-```markdown
-# 角色定位
-# 任务背景
-# 总体目标
-# 具体需求
-# 输出风格
-# 规则限制
-```
+中文输入用中文套，英文输入用英文套，顺序一一对应：
+
+| # | 中文套 | 英文套 |
+|---|---|---|
+| 1 | `# 角色定位` | `# Role` |
+| 2 | `# 任务背景` | `# Background` |
+| 3 | `# 总体目标` | `# Objective` |
+| 4 | `# 具体需求` | `# Requirements` |
+| 5 | `# 输出风格` | `# Output Style` |
+| 6 | `# 规则限制` | `# Constraints` |
 
 ## 仓库结构
 
 | 路径 | 说明 |
 |---|---|
 | [`SKILL.md`](./SKILL.md) | 可加载 skill 正文 |
-| [`docs/examples/`](./docs/examples/) | 含准备门禁、缺口追问、**爬虫只出六段**、**只给岗位名（角色调研）** |
+| [`docs/examples/`](./docs/examples/) | 含准备门禁、缺口追问、**爬虫只出六段**、**只给岗位名（角色调研）**、**英文标题套** |
 | [`docs/uat-summary.md`](./docs/uat-summary.md) | v0.2 U1–U6、v0.3 U1–U8 模拟走查、条件性判定及未验证项 |
 | [`CHANGELOG.md`](./CHANGELOG.md) | rename 与版本 |
 | [`LICENSE`](./LICENSE) | MIT |
