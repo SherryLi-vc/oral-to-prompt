@@ -15,7 +15,7 @@ Grok Bot / Cursor skill。
 | **公开 GitHub 仓名** | **`oral-to-prompt`**（用户已定；**勿用**撞车名 `prompt-optimizer`） |
 | 本地 skill id | `prompt-optimizer`（与仓名分离；用户另要求再改） |
 | 曾用 skill id | `secretary-prompt-rewrite` |
-| 拟远程 | `SherryLi-vc/oral-to-prompt`（等空仓 URL 后 push） |
+| 已发布仓库 | [SherryLi-vc/oral-to-prompt](https://github.com/SherryLi-vc/oral-to-prompt)（公开；首发 `main` tip：`1031e1c`，详见 [RESULT.md](./RESULT.md)） |
 
 「私人秘书」仅为可选情景代入。见 [CHANGELOG](./CHANGELOG.md)。
 
@@ -62,7 +62,7 @@ workflows/
 |---|---|
 | [`SKILL.md`](./SKILL.md) | 可加载 skill 正文 |
 | [`docs/examples/`](./docs/examples/) | 含准备门禁、缺口追问、**爬虫只出六段** |
-| [`docs/uat-summary.md`](./docs/uat-summary.md) | UAT 摘要占位 |
+| [`docs/uat-summary.md`](./docs/uat-summary.md) | U1–U6 与跨 bot U5 的结果、条件性 P0 判定及未验证项摘要 |
 | [`CHANGELOG.md`](./CHANGELOG.md) | rename 与版本 |
 | [`LICENSE`](./LICENSE) | MIT |
 
