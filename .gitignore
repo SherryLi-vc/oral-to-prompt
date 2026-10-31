@@ -1,2 +1,7 @@
 .env
 *.env
+logs/
+RESULT.md
+CODEX_*.md
+*.tgz
+__pycache__/
